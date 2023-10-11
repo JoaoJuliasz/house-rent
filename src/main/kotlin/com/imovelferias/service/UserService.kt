@@ -10,14 +10,14 @@ import org.springframework.http.HttpStatus
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.web.server.ResponseStatusException
-import java.lang.Exception
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 
 @Service
 class UserService(
     private val userRepository: UserRepository,
-    private val passwordEncoder: PasswordEncoder
+    private val passwordEncoder: PasswordEncoder,
+    private val emailService: EmailService
 ) {
 
     suspend fun createUser(user: UserDto) = withContext(Dispatchers.IO) {
@@ -32,6 +32,9 @@ class UserService(
         )
 
         userRepository.insert(newUser).awaitFirstOrNull()
+            .apply {
+                emailService.sendSimpleMessage(newUser.email)
+            }
     }
 
     private suspend fun getLastUserId(): Int = withContext(Dispatchers.IO) {
