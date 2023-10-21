@@ -4,10 +4,9 @@ import com.imovelferias.`interface`.JwtGeneratorInterface
 import com.imovelferias.model.user.User
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.SignatureAlgorithm
-import io.jsonwebtoken.security.Keys
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
-import java.util.Date
+import java.util.*
 
 @Service
 class JwtGeneratorService : JwtGeneratorInterface {
@@ -18,20 +17,23 @@ class JwtGeneratorService : JwtGeneratorInterface {
     lateinit var message: String;
 
     override fun generateToken(user: User): Map<String, String> {
-        val key = Keys.secretKeyFor(SignatureAlgorithm.HS256) // Generate a key for HS256
-
+        val secret_key = Base64.getEncoder().encodeToString("ThisKeyIsLongEnoughAndVerySecure".toByteArray())
         val nowMillis = System.currentTimeMillis()
         val expMillis = nowMillis + 12 * 60 * 60 * 1000
 
+        // assuming user.roles is a list of role names
+        val claim = Jwts.claims().setSubject(user.email)
+        claim["roles"] = mutableListOf("USER")  // add roles to the claim
+
         val jwtToken = Jwts.builder()
-            .setSubject(user.email)
+            .setClaims(claim)
             .setIssuedAt(Date())
             .setExpiration(Date(expMillis))
-            .signWith(key).compact()
+            .signWith(SignatureAlgorithm.HS256, secret_key).compact()
         val jwtTokenGen = mutableMapOf<String, String>()
         jwtTokenGen["token"] = jwtToken
         jwtTokenGen["message"] = message
+
         return jwtTokenGen
     }
-
 }
