@@ -1,6 +1,7 @@
 package com.imovelferias.service
 
 import com.imovelferias.model.Dto.UserDto
+import com.imovelferias.model.Dto.UserInfo
 import com.imovelferias.model.user.User
 import com.imovelferias.model.user.UserAuth
 import com.imovelferias.repository.UserRepository
@@ -8,6 +9,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.reactive.awaitFirst
 import kotlinx.coroutines.reactive.awaitFirstOrNull
 import kotlinx.coroutines.withContext
+import org.bson.types.ObjectId
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.crypto.password.PasswordEncoder
@@ -46,8 +48,22 @@ class UserService(
             val userToAuthenticate = userRepository.findUserByEmail(userAuth.email!!).awaitFirst()
                 ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "User email/password is invalid")
             validatePassword(userAuth.password!!, userToAuthenticate.password)
+            val generatedToken: MutableMap<String, String> =
+                jwtGenerator.generateToken(userToAuthenticate).toMutableMap()
+            val userId = userToAuthenticate._id
+            generatedToken["id"] = userId.toString()
             return@withContext ResponseEntity<Map<String, String>>(
-                jwtGenerator.generateToken(userToAuthenticate),
+                generatedToken,
+                HttpStatus.OK
+            )
+        }
+
+    suspend fun getUserInfo(userId: ObjectId): ResponseEntity<UserInfo> =
+        withContext(Dispatchers.IO) {
+            val foundUser = userRepository.findById(userId).awaitFirst()
+                ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User with id $userId not found")
+            return@withContext ResponseEntity<UserInfo>(
+                foundUser.toUserInfos(),
                 HttpStatus.OK
             )
         }
