@@ -3,7 +3,6 @@ package com.imovelferias.service
 import com.imovelferias.model.Dto.UserDto
 import com.imovelferias.model.Dto.UserInfo
 import com.imovelferias.model.user.User
-import com.imovelferias.model.user.UserAuth
 import com.imovelferias.repository.UserRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.reactive.awaitFirst
@@ -23,7 +22,6 @@ class UserService(
     private val userRepository: UserRepository,
     private val passwordEncoder: PasswordEncoder,
     private val emailService: EmailService,
-    private val jwtGenerator: JwtGeneratorService
 ) {
 
     suspend fun createUser(user: UserDto) = withContext(Dispatchers.IO) {
@@ -43,21 +41,6 @@ class UserService(
             }
     }
 
-    suspend fun authenticateUser(userAuth: UserAuth): ResponseEntity<Map<String, String>> =
-        withContext(Dispatchers.IO) {
-            val userToAuthenticate = userRepository.findUserByEmail(userAuth.email!!).awaitFirst()
-                ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "User email/password is invalid")
-            validatePassword(userAuth.password!!, userToAuthenticate.password)
-            val generatedToken: MutableMap<String, String> =
-                jwtGenerator.generateToken(userToAuthenticate).toMutableMap()
-            val userId = userToAuthenticate._id
-            generatedToken["id"] = userId.toString()
-            return@withContext ResponseEntity<Map<String, String>>(
-                generatedToken,
-                HttpStatus.OK
-            )
-        }
-
     suspend fun getUserInfo(userId: ObjectId): ResponseEntity<UserInfo> =
         withContext(Dispatchers.IO) {
             val foundUser = userRepository.findById(userId).awaitFirst()
@@ -73,13 +56,7 @@ class UserService(
             .findFirstByOrderByIdDesc().awaitFirstOrNull()?.id ?: 0
     }
 
-    private fun encryptUserPassword(userPassword: String) = passwordEncoder.encode(userPassword)
-
-    private fun validatePassword(password: String, userPassword: String) {
-        if (!passwordEncoder.matches(password, userPassword)) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "User email/password is invalid")
-        }
-    }
+    private fun encryptUserPassword(userPassword: String): String = passwordEncoder.encode(userPassword)
 
     private suspend fun validateUserEmail(email: String) {
         val emailAlreadyExists = userRepository.findUserByEmail(email).awaitFirstOrNull()
