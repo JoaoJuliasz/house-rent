@@ -21,7 +21,7 @@ data class User(
     val updateDate: LocalDateTime
 ) {
 
-    fun toUserInfos(): UserInfo {
+    fun toUserInfo(): UserInfo {
         // Check if _id is null, otherwise throw an exception
         val userId = this._id!!
         return UserInfo(

@@ -5,8 +5,8 @@ import com.imovelferias.model.Dto.UserInfo
 import com.imovelferias.model.user.User
 import com.imovelferias.repository.UserRepository
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.reactive.awaitFirst
 import kotlinx.coroutines.reactive.awaitFirstOrNull
+import kotlinx.coroutines.reactor.awaitSingleOrNull
 import kotlinx.coroutines.withContext
 import org.bson.types.ObjectId
 import org.springframework.http.HttpStatus
@@ -41,12 +41,15 @@ class UserService(
             }
     }
 
-    suspend fun getUserInfo(userId: ObjectId): ResponseEntity<UserInfo> =
+    suspend fun getUserInfo(userId: String): ResponseEntity<UserInfo> =
         withContext(Dispatchers.IO) {
-            val foundUser = userRepository.findById(userId).awaitFirst()
+            val mongoId = ObjectId(userId)
+            val foundUser = userRepository.findById(mongoId).awaitSingleOrNull()
                 ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User with id $userId not found")
-            return@withContext ResponseEntity<UserInfo>(
-                foundUser.toUserInfos(),
+            val userInfo = foundUser.toUserInfo()
+
+             ResponseEntity<UserInfo>(
+                userInfo,
                 HttpStatus.OK
             )
         }

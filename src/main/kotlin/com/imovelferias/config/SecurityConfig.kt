@@ -3,53 +3,39 @@ package com.imovelferias.config
 import com.imovelferias.utils.JwtFilter
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.security.config.annotation.web.builders.HttpSecurity
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
-import org.springframework.security.config.http.SessionCreationPolicy
+import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity
+import org.springframework.security.config.web.server.SecurityWebFiltersOrder
+import org.springframework.security.config.web.server.ServerHttpSecurity
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.security.crypto.password.PasswordEncoder
-import org.springframework.security.web.SecurityFilterChain
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
-import org.springframework.web.servlet.config.annotation.CorsRegistry
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
-
+import org.springframework.security.web.server.SecurityWebFilterChain
+import org.springframework.web.cors.CorsConfiguration
 
 @Configuration
-@EnableWebSecurity
+@EnableReactiveMethodSecurity
 class SecurityConfig(private val jwtFilter: JwtFilter) {
 
     @Bean
-    @Throws(Exception::class)
-    fun filterChain(http: HttpSecurity): SecurityFilterChain {
+    fun springSecurityFilterChain(http: ServerHttpSecurity): SecurityWebFilterChain {
+        val corsConfiguration = CorsConfiguration()
+        corsConfiguration.allowedMethods = listOf("GET", "POST", "PUT", "DELETE")
+        corsConfiguration.allowedOrigins = listOf("*")
+        corsConfiguration.allowedHeaders = listOf("*")
         http
             .cors {}
-            .authorizeHttpRequests { auth ->
+            .authorizeExchange { auth ->
                 auth
-                    .requestMatchers(
+                    .pathMatchers(
                         "/api/v1/announce/all",
                         "/api/v1/auth/**",
                     ).permitAll()
-                    .anyRequest().authenticated()
+                    .anyExchange().authenticated()
             }
-            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter::class.java)
+            .addFilterAt(jwtFilter, SecurityWebFiltersOrder.AUTHENTICATION)
             .csrf { it.disable() }
-            .sessionManagement {
-                it.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            }
-            .httpBasic {}
+            .httpBasic { it.disable() }
         return http.build()
     }
-
-    @Bean
-    fun corsConfigurer() = object : WebMvcConfigurer {
-        override fun addCorsMappings(registry: CorsRegistry) {
-            registry.addMapping("/**")
-                .allowedMethods("GET", "POST", "PUT", "DELETE")
-                .allowedOrigins("*")
-                .allowedHeaders("*")
-        }
-    }
-
 
     @Bean
     fun passwordEncoder(): PasswordEncoder {

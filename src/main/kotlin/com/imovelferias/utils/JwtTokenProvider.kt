@@ -1,17 +1,13 @@
 package com.imovelferias.utils
 
-import io.jsonwebtoken.Claims
 import io.jsonwebtoken.ExpiredJwtException
 import io.jsonwebtoken.JwtException
 import io.jsonwebtoken.Jwts
-import jakarta.servlet.http.HttpServletRequest
+import org.springframework.http.server.reactive.ServerHttpRequest
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.authority.SimpleGrantedAuthority
-import org.springframework.security.core.userdetails.User
-import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.stereotype.Component
-import java.security.SecureRandom
 import java.util.*
 
 
@@ -19,12 +15,12 @@ import java.util.*
 class JwtTokenProvider {
     private val secretKey: String = Base64.getEncoder().encodeToString("ThisKeyIsLongEnoughAndVerySecure".toByteArray())
 
-    fun resolveToken(req: HttpServletRequest): String? {
-        val bearerToken = req.getHeader("Authorization")
+    fun resolveToken(req: ServerHttpRequest): String? {
+        val bearerToken = req.headers.getFirst("Authorization")
         if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
             return bearerToken.substring(7)
         }
-        return null  // Don't throw exception here. We just return null if the token isn't appropriate
+        return null
     }
 
     fun getAuthentication(token: String): Authentication {
@@ -32,11 +28,11 @@ class JwtTokenProvider {
         return UsernamePasswordAuthenticationToken(getUsername(token), "", authorities)
     }
 
-    fun getUsername(token: String): String {
+    private fun getUsername(token: String): String {
         return Jwts.parser().setSigningKey(secretKey).parseClaimsJws(token).body.subject
     }
 
-    fun getRoleList(token: String): Collection<String> {
+    private fun getRoleList(token: String): Collection<String> {
         @Suppress("UNCHECKED_CAST")
         return Jwts.parser().setSigningKey(secretKey).parseClaimsJws(token).body["roles"] as Collection<String>
     }
