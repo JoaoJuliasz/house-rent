@@ -22,7 +22,9 @@ class SecurityConfig(private val jwtFilter: JwtFilter) {
         corsConfiguration.allowedOrigins = listOf("*")
         corsConfiguration.allowedHeaders = listOf("*")
         http
-            .cors {}
+            .cors {
+                it.configurationSource { corsConfiguration }
+            }
             .authorizeExchange { auth ->
                 auth
                     .pathMatchers(
